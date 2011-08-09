@@ -73,7 +73,12 @@ def run_pipeline cmds, read = false
     threads << Thread.new { yield yield_io ; yield_io.close}
     waiton threads
     rets = waiton pids
-    [outstr] + (errs.zip rets).flatten
+    rets = (errs.zip rets).flatten
+    if read then
+        rets
+    else
+        [outstr] + rets
+    end
 end
 
 def run_pipeline_w cmds, &block
