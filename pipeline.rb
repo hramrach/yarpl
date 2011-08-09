@@ -35,7 +35,7 @@ def fork_process cmd, inp_chld, out_chld, err_chld, odd_ends
 end
 
 
-def run_pipeline_w cmds
+def run_pipeline cmds, read = false
     threads = []
     odd_ends = []
     pids = []
@@ -59,13 +59,27 @@ def run_pipeline_w cmds
         cmd, *cmds = cmds
         threads <<  Thread.new { gather_out err, errstr }
     end
-    outstr = ""
     out, out_chld = IO.pipe
     odd_ends << out
-    threads << Thread.new { gather_out out, outstr }
+    if read
+        yield_io = out
+    else
+        outstr = ""
+        threads << Thread.new { gather_out out, outstr }
+        yield_io = inp
+    end
     pids << (fork_process cmd, inp_chld, out_chld, err_chld, odd_ends)
-    threads << Thread.new { yield inp ; inp.close}
+    inp.close if read
+    threads << Thread.new { yield yield_io ; yield_io.close}
     waiton threads
     *rets = waiton pids
     [outstr] + (errs.zip rets).flatten
+end
+
+def run_pipeline_w cmds, &block
+    run_pipeline cmds, false, &block
+end
+
+def run_pipeline_r cmds, &block
+    run_pipeline cmds, true, &block
 end
