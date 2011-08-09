@@ -41,5 +41,14 @@ class TestPipeline < Test::Unit::TestCase
         assert_equal @inp, output
     end
 
+    def test_true_false
+        out, err1, ret1, err2, ret2, err3, ret3 = run_pipeline_w( ["true", "false", "true"] ) {}
+        assert_equal 0, ret1, ret3
+        assert_not_equal 0, ret2
+        out, err1, ret1, err2, ret2, err3, ret3 = run_pipeline_w( ["false", "true", "false"] ) {}
+        assert_not_equal 0, ret1, ret3
+        assert_equal 0, ret2
+    end
+
 end
 

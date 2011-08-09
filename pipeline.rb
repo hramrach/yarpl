@@ -15,7 +15,7 @@ def waiton things
             thing.join
         else
             Process::waitpid thing
-            $?
+            $?.exitstatus
         end
     }
 end
@@ -72,7 +72,7 @@ def run_pipeline cmds, read = false
     inp.close if read
     threads << Thread.new { yield yield_io ; yield_io.close}
     waiton threads
-    *rets = waiton pids
+    rets = waiton pids
     [outstr] + (errs.zip rets).flatten
 end
 
