@@ -59,16 +59,15 @@ def construct_pipeline_ios inp_chld, out_chld, cmds, odd_ends
     if cmds.length >0 then
         inp_next, out_curr = IO.pipe
         pid = fork_process cmd, inp_chld, out_curr, err_chld, [inp_next,out_chld] + odd_ends
-        [err, pid] + (construct_pipeline_ios inp_next, out_chld, cmds, odd_ends)
+        errs, pids = (construct_pipeline_ios inp_next, out_chld, cmds, odd_ends)
+        [[err] + errs, [pid] + pids]
     else
-        [err, (fork_process cmd, inp_chld, out_chld, err_chld, odd_ends)]
+        [[err], [(fork_process cmd, inp_chld, out_chld, err_chld, odd_ends)]]
     end
 end
 
 def run_pipeline cmds, read = false, write = false
-    inp, out, *pipeline = construct_pipeline cmds
-    errs = pipeline.every_other
-    pids = pipeline.every_odd
+    inp, out, errs, pids = construct_pipeline cmds
     errstrs = []
     threads = []
     ret = []
@@ -89,7 +88,7 @@ def run_pipeline cmds, read = false, write = false
     threads << Thread.new { yield *yield_ios ; yield_ios.each{|io| io.close rescue nil} } if yield_ios.length > 0
     retcodes = waiton pids
     waiton threads
-    ret + (errstrs.zip retcodes).flatten
+    ret + [errstrs, retcodes]
 end
 
 def run_pipeline_w cmds, &block
