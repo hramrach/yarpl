@@ -87,5 +87,30 @@ class TestPipeline < Test::Unit::TestCase
         assert_equal @inp, out
     end
 
+    def echo str
+      STDOUT.puts str
+    end
+
+    def test_waitpid_threadsafe
+      require 'thread'
+      m = Mutex.new
+      t = nil
+      m.synchronize {
+        t = Thread.new { m.synchronize {
+        pid = fork { exit 3 }
+        Process.waitpid pid
+        #echo $?.inspect
+      }}
+      pid = fork { exit 5 }
+      Process.waitpid pid
+      #echo $?.inspect
+      }
+      t.join
+      #echo $?.inspect
+      assert_equal 5, $?.exitstatus
+      #<Process::Status: pid=6441,exited(5)>
+      #<Process::Status: pid=6443,exited(3)>
+      #<Process::Status: pid=6441,exited(5)>
+    end
 end
 
