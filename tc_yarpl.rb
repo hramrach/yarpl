@@ -1,8 +1,10 @@
-require 'pipeline'
+require 'yarpl'
 require 'test/unit'
 require 'stringio'
 
 class TestPipeline < Test::Unit::TestCase
+    include Yarpl
+    extend Yarpl
     def setup
         # none
         @data_lines = 1000

@@ -1,0 +1,30 @@
+Yet Another Ruby Pipeline Library
+
+The purpose of this tiny library is to run processes linked with their standard
+input and output with full control.
+
+Requirements:
+
+ruby (1.8.7 tested), fork (non-windows), test/unit
+
+Installation:
+
+ruby -w tc_yarpl.rb && copy yarpl.rb <wherever you want>
+
+Use:
+
+see tc_yarpl.rb for code samples.
+
+methods:
+
+str = ''
+gather_out io, str
+
+Reads io until EOF and stores data in str.
+
+list_of_stderr_outpus, list_of_return_codes = run_pipeline_r(list_of_commands){|pipeline_output_io| <read output>}
+output, list_of_stderr_outpus, list_of_return_codes = run_pipeline_w(list_of_commands){|pipeline_input_io| <write output>}
+
+Runs commands in separated processes connecting the standard inputs and outputs.
+
+

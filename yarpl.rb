@@ -1,15 +1,4 @@
-class Array
-    def every(n)
-        select {|x| index(x) % n == 0}
-    end
-    def every_other
-        every 2
-    end
-    def every_odd
-        (self[1..-1]).every_other
-    end
-end
-
+module Yarpl
 READSIZE = 1024 * 32
 def gather_out io, str
     begin
@@ -101,4 +90,5 @@ end
 
 def run_pipeline_rw cmds, &block
     run_pipeline cmds, true, true, &block
+end
 end
