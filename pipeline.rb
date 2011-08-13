@@ -1,3 +1,15 @@
+class Array
+    def every(n)
+        select {|x| index(x) % n == 0}
+    end
+    def every_other
+        every 2
+    end
+    def every_odd
+        (self[1..-1]).every_other
+    end
+end
+
 READSIZE = 1024 * 32
 def gather_out io, str
     begin
@@ -34,57 +46,60 @@ def fork_process cmd, inp_chld, out_chld, err_chld, odd_ends
     pid
 end
 
-
-def run_pipeline cmds, read = false
-    threads = []
-    odd_ends = []
-    pids = []
-    errs = []
+def construct_pipeline cmds
     inp_chld, inp = IO.pipe
-    odd_ends << inp
-    errstr = ""
-    errs << errstr
+    out, out_chld = IO.pipe
+    [inp, out] + (construct_pipeline_ios inp_chld, out_chld, cmds, [inp])
+end
+
+def construct_pipeline_ios inp_chld, out_chld, cmds, odd_ends
+    cmd, *cmds = cmds
     err, err_chld = IO.pipe
     odd_ends << err
-    cmd, *cmds = cmds
-    threads <<  Thread.new { gather_out err, errstr }
-    while cmds.length > 0 do
+    if cmds.length >0 then
         inp_next, out_curr = IO.pipe
-        pids << (fork_process cmd, inp_chld, out_curr, err_chld, odd_ends + [inp_next])
-        inp_chld = inp_next
-        errstr = ""
-        errs << errstr
-        err, err_chld = IO.pipe
-        odd_ends << err
-        cmd, *cmds = cmds
-        threads <<  Thread.new { gather_out err, errstr }
-    end
-    out, out_chld = IO.pipe
-    odd_ends << out
-    if read
-        yield_io = out
+        pid = fork_process cmd, inp_chld, out_curr, err_chld, [inp_next,out_chld] + odd_ends
+        [err, pid] + (construct_pipeline_ios inp_next, out_chld, cmds, odd_ends)
     else
+        [err, (fork_process cmd, inp_chld, out_chld, err_chld, odd_ends)]
+    end
+end
+
+def run_pipeline cmds, read = false, write = false
+    inp, out, *pipeline = construct_pipeline cmds
+    errs = pipeline.every_other
+    pids = pipeline.every_odd
+    errstrs = []
+    threads = []
+    ret = []
+    inp.close if !write
+    if ! read then
         outstr = ""
         threads << Thread.new { gather_out out, outstr }
-        yield_io = inp
+        ret << outstr
     end
-    pids << (fork_process cmd, inp_chld, out_chld, err_chld, odd_ends)
-    inp.close if read
-    threads << Thread.new { yield yield_io ; yield_io.close}
+    errs.each{|io|
+        errstr = ""
+        errstrs << errstr
+        threads <<  Thread.new { gather_out io, errstr }
+    }
+    yield_ios = []
+    yield_ios << inp if write
+    yield_ios << out if read
+    threads << Thread.new { yield *yield_ios ; yield_ios.each{|io| io.close rescue nil} } if yield_ios.length > 0
+    retcodes = waiton pids
     waiton threads
-    rets = waiton pids
-    rets = (errs.zip rets).flatten
-    if read then
-        rets
-    else
-        [outstr] + rets
-    end
+    ret + (errstrs.zip retcodes).flatten
 end
 
 def run_pipeline_w cmds, &block
-    run_pipeline cmds, false, &block
+    run_pipeline cmds, false, true, &block
 end
 
 def run_pipeline_r cmds, &block
-    run_pipeline cmds, true, &block
+    run_pipeline cmds, true, false, &block
+end
+
+def run_pipeline_rw cmds, &block
+    run_pipeline cmds, true, true, &block
 end
