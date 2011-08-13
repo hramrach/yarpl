@@ -68,5 +68,16 @@ class TestPipeline < Test::Unit::TestCase
         assert_equal 0, ret2, ret4
     end
 
+    def test_err
+      out, err1, ret1, err2, ret2 = result = run_pipeline_w( ["sh -c 'while read x ; do echo $x ; echo A$x >&2 ; done; exit 5'" ,
+                                                            "sh -c 'while read x ; do echo $x ; echo B$x >&2 ; done ; exit 3'" ] ) {|io|
+        output_data io }
+        assert_equal 5, ret1
+        assert_equal 3, ret2
+        assert_equal @inp.gsub(/^/,'A') , err1
+        assert_equal @inp.gsub(/^/,'B') , err2
+        assert_equal @inp, out
+    end
+
 end
 
